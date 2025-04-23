@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ball Catcher Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
+            height: 100vh;
+        }
+        
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #game-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #134e5e, #71b280);
+            z-index: 1;
+        }
+        
+        /* Player basket styling */
+        #basket {
+            width: 120px;
+            height: 60px;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+        
+        #basket-front {
+            width: 120px;
+            height: 60px;
+            background: linear-gradient(to bottom, #d4a676, #8B4513);
+            border-radius: 0 0 50px 50px;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border: 3px solid #6e3b0f;
+            border-top: none;
+        }
+        
+        #basket-handle {
+            width: 80px;
+            height: 40px;
+            border: 5px solid #6e3b0f;
+            border-bottom: none;
+            border-radius: 40px 40px 0 0;
+            position: absolute;
+            top: -20px;
+            left: 20px;
+        }
+        
+        /* Ball and bomb styling */
+        .ball {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            position: absolute;
+            z-index: 5;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        
+        .normal-ball {
+            background: radial-gradient(circle at 30% 30%, #f2f2f2, #cc0000);
+            border: 2px solid #990000;
+        }
+        
+        .special-ball {
+            background: radial-gradient(circle at 30% 30%, #f2f2f2, #ffcc00);
+            border: 2px solid #cc9900;
+            animation: pulse 1s infinite alternate;
+        }
+        
+        .bomb {
+            width: 40px;
+            height: 40px;
+            position: absolute;
+            z-index: 5;
+            background: radial-gradient(circle at 30% 30%, #666, #000);
+            border-radius: 50%;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+        }
+        
+        .bomb::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            right: 10px;
+            width: 10px;
+            height: 10px;
+            background: #ff6600;
+            border-radius: 50%;
+            box-shadow: 0 0 10px 5px rgba(255,102,0,0.5);
+            animation: flicker 0.5s infinite alternate;
+        }
+        
+        /* UI Elements */
+        #game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 20;
+        }
+        
+        #score-container {
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        #lives-container {
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .life {
+            display: inline-block;
+            color: #ff3333;
+            margin-left: 5px;
+            font-size: 28px;
+            text-shadow: 0 0 5px rgba(255,51,51,0.7);
+            animation: beat 1s infinite alternate;
+            transform-origin: center;
+        }
+        
+        /* Game over screen */
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 100;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 3px solid #555;
+        }
+        
+        #game-over.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        #game-over h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff3333;
+            text-shadow: 0 0 10px rgba(255,51,51,0.5);
+        }
+        
+        #final-score-container {
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+        
+        #final-score {
+            color: #ffcc00;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255,204,0,0.5);
+        }
+        
+        #restart-button {
+            padding: 15px 30px;
+            font-size: 24px;
+            background: linear-gradient(to bottom, #5cb85c, #449d44);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        #restart-button:hover {
+            background: linear-gradient(to bottom, #449d44, #398439);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        
+        #restart-button:active {
+            transform: translateY(1px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+        
+        /* Level indicator */
+        #level-indicator {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 20;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        /* Particles system */
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            z-index: 4;
+            opacity: 1;
+            pointer-events: none;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        
+        @keyframes beat {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        
+        @keyframes flicker {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        /* Start screen */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+        
+        #start-screen h1 {
+            font-size: 60px;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        
+        #start-button {
+            padding: 20px 40px;
+            font-size: 30px;
+            background: linear-gradient(to bottom, #5cb85c, #449d44);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        #start-button:hover {
+            background: linear-gradient(to bottom, #449d44, #398439);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        
+        /* Tutorial hint */
+        #tutorial-hint {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            opacity: 0.8;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        
+        /* Loading spinner */
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 8px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1>Ball Catcher Pro</h1>
+        <button id="start-button">START GAME</button>
+    </div>
+
+    <!-- Game Container -->
+    <div id="game-container">
+        <div id="game-background"></div>
+        
+        <!-- Player's Basket -->
+        <div id="basket">
+            <div id="basket-handle"></div>
+            <div id="basket-front"></div>
+        </div>
+        
+        <!-- Game UI Elements -->
+        <div id="game-ui">
+            <div id="score-container">Score: <span id="score">0</span></div>
+            <div id="lives-container">Lives: <span id="lives"></span></div>
+        </div>
+        
+        <div id="level-indicator">Level: <span id="level">1</span></div>
+        <div id="tutorial-hint">Move mouse or touch to control the basket</div>
+        
+        <!-- Game Over Screen -->
+        <div id="game-over">
+            <h1>Game Over!</h1>
+            <div id="final-score-container">Final Score: <span id="final-score">0</span></div>
+            <button id="restart-button">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Wait for everything to load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 1000);
+        });
+        
+        // Game Elements
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const gameContainer = document.getElementById('game-container');
+        const basket = document.getElementById('basket');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const levelDisplay = document.getElementById('level');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
+        const tutorialHint = document.getElementById('tutorial-hint');
+        
+        // Game variables
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameOver = false;
+        let gameActive = false;
+        let fallSpeed = 2;
+        let spawnInterval = 1000;
+        let basketWidth = 120;
+        let basketHeight = 60;
+        let specialBallChance = 0.1;
+        let maxFallSpeed = 10;
+        let basketPosition = 0;
+        
+        // Audio setup
+        let bgMusic;
+        let catchSound;
+        let bombSound;
+        let gameOverSound;
+        let pointSound;
+        let specialSound;
+        
+        // Preload audio function
+        function preloadAudio() {
+            // We're not actually loading audio files since we don't have access to them
+            // This is where you would load your audio files if you had them
+        }
+        
+        // Update lives display
+        function updateLives() {
+            livesDisplay.innerHTML = '';
+            for (let i = 0; i < lives; i++) {
+                livesDisplay.innerHTML += '<span class="life">❤</span>';
+            }
+        }
+        
+        // Initialize lives
+        updateLives();
+        
+        // Handle basket movement
+        document.addEventListener('mousemove', (e) => {
+            if (gameActive && !gameOver) {
+                basketPosition = e.clientX - basketWidth / 2;
+                if (basketPosition < 0) basketPosition = 0;
+                if (basketPosition > window.innerWidth - basketWidth) basketPosition = window.innerWidth - basketWidth;
+                basket.style.left = basketPosition + 'px';
+            }
+        });
+        
+        // Touch controls for mobile
+        document.addEventListener('touchmove', (e) => {
+            if (gameActive && !gameOver) {
+                e.preventDefault();
+                basketPosition = e.touches[0].clientX - basketWidth / 2;
+                if (basketPosition < 0) basketPosition = 0;
+                if (basketPosition > window.innerWidth - basketWidth) basketPosition = window.innerWidth - basketWidth;
+                basket.style.left = basketPosition + 'px';
+            }
+        }, { passive: false });
+        
+        // Create particles for effects
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.backgroundColor = color;
+                
+                // Random velocity
+                const vx = (Math.random() - 0.5) * 8;
+                const vy = (Math.random() - 0.5) * 8;
+                
+                gameContainer.appendChild(particle);
+                
+                // Animate particle
+                let opacity = 1;
+                let posX = x;
+                let posY = y;
+                
+                const particleInterval = setInterval(() => {
+                    opacity -= 0.05;
+                    posX += vx;
+                    posY += vy;
+                    
+                    particle.style.opacity = opacity;
+                    particle.style.left = posX + 'px';
+                    particle.style.top = posY + 'px';
+                    
+                    if (opacity <= 0) {
+                        clearInterval(particleInterval);
+                        if (gameContainer.contains(particle)) {
+                            gameContainer.removeChild(particle);
+                        }
+                    }
+                }, 30);
+            }
+        }
+        
+        // Create balls and bombs
+        function createObject() {
+            if (!gameActive || gameOver) return;
+            
+            // Decide whether to create a ball or bomb (75% ball, 25% bomb)
+            const isBomb = Math.random() < 0.25;
+            
+            const object = document.createElement('div');
+            
+            if (isBomb) {
+                object.className = 'bomb';
+            } else {
+                object.className = 'ball';
+                // Decide if it's a special ball
+                const isSpecial = Math.random() < specialBallChance;
+                object.classList.add(isSpecial ? 'special-ball' : 'normal-ball');
+                object.dataset.special = isSpecial ? '1' : '0';
+            }
+            
+            // Random position
+            const randomX = Math.random() * (window.innerWidth - 40);
+            object.style.left = randomX + 'px';
+            object.style.top = '-40px';
+            
+            gameContainer.appendChild(object);
+            
+            // Make it fall with individual speed variation
+            let posY = -40;
+            const objectSpeed = fallSpeed * (0.8 + Math.random() * 0.4);
+            
+            const fallInterval = setInterval(() => {
+                if (!gameActive || gameOver) {
+                    clearInterval(fallInterval);
+                    if (gameContainer.contains(object)) {
+                        gameContainer.removeChild(object);
+                    }
+                    return;
+                }
+                
+                posY += objectSpeed;
+                object.style.top = posY + 'px';
+                
+                const objectRect = object.getBoundingClientRect();
+                const basketRect = basket.getBoundingClientRect();
+                
+                // Check collision with basket
+                if (objectRect.bottom >= basketRect.top && 
+                    objectRect.top <= basketRect.bottom &&
+                    objectRect.right >= basketRect.left &&
+                    objectRect.left <= basketRect.right) {
+                    
+                    // Caught!
+                    if (object.classList.contains('bomb')) {
+                        // Bomb hit
+                        lives--;
+                        updateLives();
+                        createParticles(objectRect.left + objectRect.width/2, objectRect.top + objectRect.height/2, '#ff6600', 20);
+                        
+                        if (lives <= 0) {
+                            endGame();
+                        }
+                    } else {
+                        // Ball caught
+                        const isSpecial = object.dataset.special === '1';
+                        if (isSpecial) {
+                            score += 50;
+                            createParticles(objectRect.left + objectRect.width/2, objectRect.top + objectRect.height/2, '#ffcc00', 30);
+                        } else {
+                            score += 10;
+                            createParticles(objectRect.left + objectRect.width/2, objectRect.top + objectRect.height/2, '#cc0000', 15);
+                        }
+                        scoreDisplay.textContent = score;
+                        
+                        // Level up based on score
+                        const newLevel = Math.floor(score / 150) + 1;
+                        if (newLevel > level) {
+                            level = newLevel;
+                            levelDisplay.textContent = level;
+                            
+                            // Increase difficulty with each level
+                            fallSpeed = Math.min(fallSpeed + 0.5, maxFallSpeed);
+                            spawnInterval = Math.max(spawnInterval - 50, 300);
+                            specialBallChance = Math.min(specialBallChance + 0.02, 0.25);
+                            
+                            // Show level up notification
+                            const levelUpNotification = document.createElement('div');
+                            levelUpNotification.style.position = 'absolute';
+                            levelUpNotification.style.top = '50%';
+                            levelUpNotification.style.left = '50%';
+                            levelUpNotification.style.transform = 'translate(-50%, -50%)';
+                            levelUpNotification.style.color = '#ffcc00';
+                            levelUpNotification.style.fontSize = '48px';
+                            levelUpNotification.style.fontWeight = 'bold';
+                            levelUpNotification.style.textShadow = '0 0 20px rgba(255,204,0,0.7)';
+                            levelUpNotification.style.zIndex = '50';
+                            levelUpNotification.innerText = `LEVEL ${level}!`;
+                            
+                            gameContainer.appendChild(levelUpNotification);
+                            
+                            setTimeout(() => {
+                                if (gameContainer.contains(levelUpNotification)) {
+                                    gameContainer.removeChild(levelUpNotification);
+                                }
+                            }, 1500);
+                        }
+                    }
+                    
+                    clearInterval(fallInterval);
+                    gameContainer.removeChild(object);
+                } else if (posY > window.innerHeight) {
+                    // Object missed
+                    if (object.classList.contains('ball') && !object.classList.contains('bomb')) {
+                        lives--;
+                        updateLives();
+                        if (lives <= 0) {
+                            endGame();
+                        }
+                    }
+                    
+                    clearInterval(fallInterval);
+                    if (gameContainer.contains(object)) {
+                        gameContainer.removeChild(object);
+                    }
+                }
+            }, 16); // ~60fps
+        }
+        
+        // Game spawn loop
+        let spawnTimeout;
+        function spawnLoop() {
+            if (!gameActive || gameOver) return;
+            
+            createObject();
+            
+            // Dynamic spawn rate based on level
+            const actualInterval = spawnInterval * (0.8 + Math.random() * 0.4);
+            spawnTimeout = setTimeout(spawnLoop, actualInterval);
+        }
+        
+        // End game
+        function endGame() {
+            gameOver = true;
+            gameActive = false;
+            clearTimeout(spawnTimeout);
+            
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.classList.add('show');
+            
+            // Save high score
+            const highScore = localStorage.getItem('ballCatcherHighScore') || 0;
+            if (score > highScore) {
+                localStorage.setItem('ballCatcherHighScore', score);
+            }
+        }
+        
+        // Restart game
+        function restartGame() {
+            // Reset game variables
+            score = 0;
+            lives = 3;
+            level = 1;
+            gameOver = false;
+            gameActive = true;
+            fallSpeed = 2;
+            spawnInterval = 1000;
+            specialBallChance = 0.1;
+            
+            // Reset displays
+            scoreDisplay.textContent = '0';
+            levelDisplay.textContent = '1';
+            updateLives();
+            
+            // Hide game over screen
+            gameOverScreen.classList.remove('show');
+            
+            // Remove all objects
+            document.querySelectorAll('.ball, .bomb, .particle').forEach(obj => {
+                if (gameContainer.contains(obj)) {
+                    gameContainer.removeChild(obj);
+                }
+            });
+            
+            // Position basket at center
+            basketPosition = window.innerWidth / 2 - basketWidth / 2;
+            basket.style.left = basketPosition + 'px';
+            
+            // Start spawning
+            spawnLoop();
+            
+            // Show tutorial hint briefly
+            tutorialHint.style.opacity = '0.8';
+            setTimeout(() => {
+                tutorialHint.style.opacity = '0';
+            }, 3000);
+        }
+        
+        // Start game event
+        startButton.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            gameActive = true;
+            // Initialize basket position
+            basketPosition = window.innerWidth / 2 - basketWidth / 2;
+            basket.style.left = basketPosition + 'px';
+            // Start game
+            spawnLoop();
+            
+            // Show tutorial hint for 3 seconds
+            setTimeout(() => {
+                tutorialHint.style.opacity = '0';
+            }, 3000);
+        });
+        
+        // Restart button event
+        restartButton.addEventListener('click', restartGame);
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Adjust basket position on resize
+            if (basketPosition > window.innerWidth - basketWidth) {
+                basketPosition = window.innerWidth - basketWidth;
+                basket.style.left = basketPosition + 'px';
+            }
+        });
+        
+        // Preload audio
+        preloadAudio();
+    </script>
+</body>
+</html>
